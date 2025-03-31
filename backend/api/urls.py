@@ -39,7 +39,9 @@ urlpatterns = [
     path('movies/', views.available_movies, name='available_movies'),
     path('foods/', views.available_foods, name='available_foods'),
     path('bookings/create/', views.create_booking, name='create_booking'),
-    
-    # Added new cancel booking endpoint
     path('bookings/cancel/<int:booking_id>/', views.cancel_booking, name='cancel_booking'),
+    
+    # NEW: Local booking API routes (no authentication required)
+    path('local-bookings/', views.create_local_booking, name='create_local_booking'),
+    path('local-bookings/cancel/<int:booking_id>/', views.cancel_local_booking, name='cancel_local_booking'),
 ]

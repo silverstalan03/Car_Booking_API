@@ -1,52 +1,106 @@
 /* AvailableMovies.css */
 .movies-container {
-    max-width: 1200px;
-    margin: 2rem auto;
-    padding: 0 1rem;
-  }
-  
-  .movies-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 2rem;
-    margin-top: 2rem;
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+h1 {
+  color: #2c3e50;
+  margin-bottom: 2rem;
+  font-size: 2rem;
+}
+
+/* Change grid layout to flex layout for movies */
+.movies-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.movie-card {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transition: transform 0.3s;
+  padding: 1.5rem;
+}
+
+.movie-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+/* Movie card title */
+.movie-card h3 {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+  padding: 0;
+}
+
+/* Movie details */
+.movie-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.movie-detail {
+  margin: 0.25rem 0;
+}
+
+.movie-card p {
+  padding: 0;
+  color: #555;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.movie-card strong {
+  font-weight: bold;
+  color: #333;
+}
+
+/* Movie plot */
+.movie-plot {
+  margin-top: 0.5rem;
+}
+
+/* Loading and error states */
+.loading, .error {
+  text-align: center;
+  margin-top: 5rem;
+  font-size: 1.2rem;
+}
+
+.error {
+  color: #e74c3c;
+}
+
+/* Media queries for responsive design */
+@media (max-width: 768px) {
+  .movies-container {
+    padding: 0 0.5rem;
   }
   
   .movie-card {
-    background: white;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    transition: transform 0.3s;
-  }
-  
-  .movie-card:hover {
-    transform: translateY(-5px);
-  }
-  
-  .movie-card img {
-    width: 100%;
-    height: 350px;
-    object-fit: cover;
+    padding: 1rem;
   }
   
   .movie-card h3 {
-    padding: 1rem 1rem 0.5rem;
+    font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .movie-card {
+    padding: 0.75rem;
+  }
+  
+  .movie-card h3 {
     font-size: 1.2rem;
   }
-  
-  .movie-card p {
-    padding: 0 1rem;
-    color: #666;
-    margin-bottom: 0.5rem;
-  }
-  
-  .loading, .error {
-    text-align: center;
-    margin-top: 5rem;
-    font-size: 1.2rem;
-  }
-  
-  .error {
-    color: red;
-  }
+}

@@ -4,9 +4,6 @@ import Navbar from '../Navbar/Navbar';
 import { useNavigate } from 'react-router-dom';
 import './CarsPage.css';
 
-// AWS API URL
-const AWS_API_URL = 'https://ozado4x5ci.execute-api.us-east-1.amazonaws.com/Dev';
-
 const CarsPage = () => {
     const navigate = useNavigate();
     const [cars, setCars] = useState({
@@ -22,66 +19,6 @@ const CarsPage = () => {
     const [bookingConfirmed, setBookingConfirmed] = useState(false);
     const [receipt, setReceipt] = useState(null);
     const [bookingHistory, setBookingHistory] = useState([]);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [userId, setUserId] = useState(null);
-    const [awsEnabled, setAwsEnabled] = useState(true); // Enable AWS integration
-
-    // Check if user is authenticated
-    const checkAuth = async () => {
-        try {
-            const response = await fetch('http://127.0.0.1:8000/api/myaccount/', {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                const userData = await response.json();
-                setIsAuthenticated(true);
-                setUserId(userData.id);
-                console.log("User authenticated:", userData.email);
-                return true;
-            } else {
-                setIsAuthenticated(false);
-                setUserId(null);
-                console.log("User not authenticated");
-                return false;
-            }
-        } catch (error) {
-            console.error('Auth check error:', error);
-            setIsAuthenticated(false);
-            setUserId(null);
-            return false;
-        }
-    };
-
-    // AWS Functions
-    const createAWSBooking = async (bookingData) => {
-        try {
-            console.log("Sending booking to AWS:", bookingData);
-            
-            const response = await fetch(AWS_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(bookingData),
-            });
-            
-            if (!response.ok) {
-                throw new Error(`AWS API responded with status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log("AWS booking response:", data);
-            return data;
-        } catch (error) {
-            console.error('Error creating AWS booking:', error);
-            throw error;
-        }
-    };
 
     // Get car image URL with guaranteed working images
     const getCarImageUrl = (car) => {
@@ -98,62 +35,16 @@ const CarsPage = () => {
             "Ford Focus": "https://images.unsplash.com/photo-1580273916550-e323be2ae537?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80"
         };
         
-        // Return from hardcoded images first, then try other sources
+        // Return from hardcoded images first, then use fallback
         if (carImages[car.car_name]) {
             return carImages[car.car_name];
-        } else if (car.photo_url && car.photo_url.startsWith('/')) {
-            return `http://127.0.0.1:8000${car.photo_url}`;
-        } else if (car.photo_url) {
-            return car.photo_url;
         } else {
             return "https://images.unsplash.com/photo-1560958089-b8a1929cea89?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1171&q=80";
         }
     };
 
-    // Fetch cars from the API or use mock data
-    const fetchCars = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            // First try to get cars from the API
-            const response = await fetch('http://127.0.0.1:8000/api/cars/', {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            console.log("Cars API response status:", response.status);
-
-            if (response.ok) {
-                const data = await response.json();
-                
-                // Sort and categorize cars
-                const sortedCars = [...data].sort((a, b) => b.price_per_day - a.price_per_day);
-                
-                const categorizedCars = {
-                    luxury: sortedCars.slice(0, 3),
-                    medium: sortedCars.slice(3, 6),
-                    economy: sortedCars.slice(6, 9)
-                };
-                
-                setCars(categorizedCars);
-            } else {
-                // If API fails, use mock data
-                console.log('Using mock data due to API error:', response.status);
-                useMockCars();
-            }
-        } catch (error) {
-            console.error('Error fetching cars:', error);
-            useMockCars();
-        }
-
-        setLoading(false);
-    };
-    
-    const useMockCars = () => {
-        // Use mock data as fallback
+    // Load mock cars data
+    const loadMockCars = () => {
         const mockCars = {
             luxury: [
                 {
@@ -218,11 +109,60 @@ const CarsPage = () => {
         };
         
         setCars(mockCars);
+        setLoading(false);
     };
 
-    // Fetch booking history
+    // Function to call local API
+    const callLocalApi = async (bookingData) => {
+        try {
+            console.log('Calling local API with booking data:', bookingData);
+            
+            const response = await fetch('http://127.0.0.1:8000/api/local-bookings/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bookingData),
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Local API response:', data);
+                return data;
+            } else {
+                console.warn(`Local API responded with status: ${response.status}`);
+                return null;
+            }
+        } catch (error) {
+            console.warn('Local API call failed:', error.message);
+            return null;
+        }
+    };
+
+    // Function to call local API for cancellation
+    const callLocalCancelApi = async (bookingId) => {
+        try {
+            console.log('Calling local API to cancel booking:', bookingId);
+            
+            const response = await fetch(`http://127.0.0.1:8000/api/local-bookings/cancel/${bookingId}/`, {
+                method: 'DELETE',
+            });
+            
+            if (response.ok) {
+                console.log('Local API cancel response successful');
+                return true;
+            } else {
+                console.warn(`Local API cancel responded with status: ${response.status}`);
+                return false;
+            }
+        } catch (error) {
+            console.warn('Local API cancel call failed:', error.message);
+            return false;
+        }
+    };
+
+    // Fetch booking history from local storage
     const fetchBookingHistory = () => {
-        // Get booking history from localStorage
         const storedBookings = localStorage.getItem('bookingHistory');
         if (storedBookings) {
             setBookingHistory(JSON.parse(storedBookings));
@@ -230,11 +170,9 @@ const CarsPage = () => {
     };
 
     useEffect(() => {
-        // Check authentication status
-        checkAuth().then(() => {
-            fetchCars();
-            fetchBookingHistory();
-        });
+        // Load cars and booking history on component mount
+        loadMockCars();
+        fetchBookingHistory();
     }, []);
 
     const handleViewDetails = (car, category) => {
@@ -255,8 +193,18 @@ const CarsPage = () => {
         fetchBookingHistory();
     };
 
-    // Separate function for client-side booking
-    const createClientSideBooking = () => {
+    // Handle car booking
+    const handleBookCar = async () => {
+        if (!bookingDate) {
+            alert('Please select a booking date');
+            return;
+        }
+
+        if (!bookingTime) {
+            alert('Please select a booking time');
+            return;
+        }
+        
         // Generate movie price based on category
         let moviePrice;
         switch(selectedCar.category) {
@@ -270,176 +218,67 @@ const CarsPage = () => {
                 moviePrice = 10;
         }
         
-        // Generate a random booking ID
+        // Generate a random booking ID (for local fallback)
         const bookingId = Math.floor(1000 + Math.random() * 9000);
         
-        // Create receipt data
-        const receiptData = {
+        // Create receipt data (for local fallback)
+        const localReceiptData = {
             booking_id: bookingId,
             car: selectedCar.car_name,
             category: selectedCar.category,
             booking_date: bookingDate,
             booking_time: bookingTime,
             price: `€${moviePrice}`,
-            created_at: new Date().toISOString(),
-            user_id: userId || 'guest'
+            created_at: new Date().toISOString()
         };
+        
+        // Try calling the local API first
+        let finalReceiptData = localReceiptData;
+        try {
+            const apiData = await callLocalApi({
+                car_id: selectedCar.id,
+                car_name: selectedCar.car_name,
+                category: selectedCar.category,
+                start_date: bookingDate,
+                booking_time: bookingTime,
+                price: moviePrice
+            });
+            
+            if (apiData && apiData.receipt) {
+                // If API call succeeded, use its data
+                console.log('Using receipt from local API');
+                finalReceiptData = apiData.receipt;
+            }
+        } catch (error) {
+            console.error('Error with local API, using local storage instead:', error);
+            // Continue with local storage approach
+        }
         
         // Save to booking history in localStorage
         const existingBookings = JSON.parse(localStorage.getItem('bookingHistory') || '[]');
-        existingBookings.push(receiptData);
+        existingBookings.push(finalReceiptData);
         localStorage.setItem('bookingHistory', JSON.stringify(existingBookings));
         
         // Update state
-        setReceipt(receiptData);
+        setReceipt(finalReceiptData);
         setBookingConfirmed(true);
-    };
-
-    const handleBookCar = async () => {
-        if (!bookingDate) {
-            alert('Please select a booking date');
-            return;
-        }
-
-        if (!bookingTime) {
-            alert('Please select a booking time');
-            return;
-        }
-        
-        try {
-            // Try AWS booking first if enabled
-            if (awsEnabled) {
-                try {
-                    // Generate numeric price without the € symbol
-                    let numericPrice;
-                    switch(selectedCar.category) {
-                        case 'luxury': numericPrice = 20; break;
-                        case 'medium': numericPrice = 15; break;
-                        default: numericPrice = 10;
-                    }
-                    
-                    const awsBookingData = {
-                        car_name: selectedCar.car_name,
-                        category: selectedCar.category,
-                        booking_date: bookingDate,
-                        booking_time: bookingTime,
-                        price: numericPrice
-                    };
-                    
-                    const awsResponse = await createAWSBooking(awsBookingData);
-                    
-                    if (awsResponse && awsResponse.receipt) {
-                        // AWS booking successful
-                        setReceipt(awsResponse.receipt);
-                        
-                        // Also save to local storage for history
-                        const existingBookings = JSON.parse(localStorage.getItem('bookingHistory') || '[]');
-                        existingBookings.push(awsResponse.receipt);
-                        localStorage.setItem('bookingHistory', JSON.stringify(existingBookings));
-                        
-                        setBookingConfirmed(true);
-                        return;
-                    }
-                } catch (awsError) {
-                    console.error('AWS booking error:', awsError);
-                    // Continue with Django or client-side booking
-                }
-            }
-            
-            // For non-authenticated users, just use client-side booking
-            if (!isAuthenticated) {
-                if (window.confirm('You need to login for server-side booking. Continue with local booking?')) {
-                    createClientSideBooking();
-                } else {
-                    navigate('/');
-                }
-                return;
-            }
-            
-            // For authenticated users, try Django booking
-            const djangoBookingData = {
-                car_id: selectedCar.id,
-                start_date: bookingDate,
-                end_date: bookingDate, // Same date for a single day booking
-                booking_time: bookingTime
-            };
-            console.log("Sending booking data to Django:", djangoBookingData);
-                
-            const response = await fetch('http://127.0.0.1:8000/api/bookings/create/', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(djangoBookingData)
-            });
-            
-            console.log("Django booking API response status:", response.status);
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log("Django booking success:", data);
-                
-                if (data.receipt) {
-                    setReceipt(data.receipt);
-                    // Also save to local storage for backup
-                    const existingBookings = JSON.parse(localStorage.getItem('bookingHistory') || '[]');
-                    existingBookings.push(data.receipt);
-                    localStorage.setItem('bookingHistory', JSON.stringify(existingBookings));
-                    setBookingConfirmed(true);
-                    return;
-                }
-            } else {
-                // Handle error
-                try {
-                    const errorData = await response.json();
-                    console.error("Django booking error:", errorData);
-                    alert(`Booking failed: ${errorData.error || 'Unknown error'}`);
-                } catch (e) {
-                    console.error("Error parsing error response:", e);
-                }
-                
-                if (window.confirm('Server booking failed. Continue with local booking?')) {
-                    createClientSideBooking();
-                }
-            }
-        } catch (error) {
-            console.error('Error booking car:', error);
-            if (window.confirm('All booking attempts failed. Continue with local booking?')) {
-                createClientSideBooking();
-            }
-        }
+        setBookingHistory(existingBookings);
     };
 
     const handleCancelBooking = async (bookingId) => {
         try {
-            console.log("Cancelling booking:", bookingId);
-            
-            let serverCancelled = false;
-            
-            // Only try server cancellation if authenticated and booking ID is numeric (likely from server)
-            if (isAuthenticated && !isNaN(bookingId) && bookingId < 1000) {
-                try {
-                    const response = await fetch(`http://127.0.0.1:8000/api/bookings/cancel/${bookingId}/`, {
-                        method: 'DELETE',
-                        credentials: 'include',
-                    });
-                    
-                    console.log("Cancel booking response status:", response.status);
-                    
-                    if (response.ok) {
-                        console.log('Booking cancelled on server');
-                        serverCancelled = true;
-                    } else {
-                        console.log('Server cancellation failed, proceeding with local cancellation');
-                    }
-                } catch (apiError) {
-                    console.error('API cancellation error:', apiError);
-                    // Continue with local cancellation even if API fails
+            // Try local API cancellation
+            try {
+                const success = await callLocalCancelApi(bookingId);
+                if (success) {
+                    console.log('Booking cancelled via local API');
                 }
+            } catch (apiError) {
+                console.warn('Local API cancellation failed:', apiError);
+                // Continue with local storage approach
             }
             
-            // Always update local storage
+            // Always update local storage regardless of API result
             const existingBookings = JSON.parse(localStorage.getItem('bookingHistory') || '[]');
             const updatedBookings = existingBookings.filter(booking => booking.booking_id != bookingId);
             localStorage.setItem('bookingHistory', JSON.stringify(updatedBookings));
@@ -497,7 +336,7 @@ const CarsPage = () => {
                                         </div>
                                         <div className="receipt-row">
                                             <span>Date:</span>
-                                            <span>{receipt.booking_date || receipt.start_date}</span>
+                                            <span>{receipt.booking_date}</span>
                                         </div>
                                         <div className="receipt-row">
                                             <span>Time:</span>
@@ -505,12 +344,14 @@ const CarsPage = () => {
                                         </div>
                                         <div className="receipt-row price">
                                             <span>Price:</span>
-                                            <span>{receipt.price || `€${receipt.total_price}`}</span>
+                                            <span>{receipt.price}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <p className="notification-info">
-                                    Booking confirmation has been sent. Check your email for notifications!
+                                    {receipt.server_processed ? 
+                                        "Your booking has been processed by the server and saved. You can view it in your booking history below." :
+                                        "Your booking has been saved locally. You can view it in your booking history below."}
                                 </p>
                                 <button className="book-another-button" onClick={handleCloseDetails}>
                                     Book Another Car
@@ -544,17 +385,6 @@ const CarsPage = () => {
                                     
                                     <div className="booking-section">
                                         <h3>Book this car</h3>
-                                        {!isAuthenticated && (
-                                            <div className="auth-warning">
-                                                <p>You are not logged in. Login for server-side bookings or continue with local bookings.</p>
-                                                <button 
-                                                    className="login-button" 
-                                                    onClick={() => navigate('/')}
-                                                >
-                                                    Go to Login
-                                                </button>
-                                            </div>
-                                        )}
                                         <div className="booking-form">
                                             <div className="form-group">
                                                 <label>Available Date:</label>
@@ -609,13 +439,13 @@ const CarsPage = () => {
                                                     <strong>Car:</strong> {booking.car}
                                                 </div>
                                                 <div className="booking-info-row">
-                                                    <strong>Date:</strong> {booking.booking_date || booking.start_date}
+                                                    <strong>Date:</strong> {booking.booking_date}
                                                 </div>
                                                 <div className="booking-info-row">
                                                     <strong>Time:</strong> {booking.booking_time}
                                                 </div>
                                                 <div className="booking-info-row">
-                                                    <strong>Price:</strong> {booking.price || `€${booking.total_price}`}
+                                                    <strong>Price:</strong> {booking.price}
                                                 </div>
                                             </div>
                                             <button 

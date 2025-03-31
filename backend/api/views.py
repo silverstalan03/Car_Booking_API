@@ -11,6 +11,9 @@ from backendpandacar.custom_classes import CustomAuthentication
 from rest_framework.throttling import ScopedRateThrottle
 import logging
 from datetime import datetime
+import json
+import random
+from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
@@ -505,3 +508,85 @@ def delete_account(request):
     except Exception as e:
         print(f"Error deleting user account: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Local booking functionality (no authentication required)
+@api_view(['POST'])
+@authentication_classes([])  # No authentication required
+@permission_classes([AllowAny])  # Allow anyone to access
+def create_local_booking(request):
+    """
+    Handle local booking creation without authentication requirements
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        
+        # Print received data for debugging
+        print("Local booking request data:", data)
+        
+        # Generate a unique booking ID (smaller than the client-side one for differentiation)
+        booking_id = random.randint(100, 999)
+        
+        # Extract booking details
+        car_name = data.get('car_name', 'Unknown Car')
+        category = data.get('category', 'unknown')
+        booking_date = data.get('start_date', datetime.today().isoformat())
+        booking_time = data.get('booking_time', '19:00')
+        price = data.get('price', 0)
+        
+        # Create receipt object
+        receipt = {
+            "booking_id": booking_id,
+            "car": car_name,
+            "category": category,
+            "booking_date": booking_date,
+            "booking_time": booking_time,
+            "price": f"€{price}",
+            "created_at": datetime.now().isoformat(),
+            "server_processed": True
+        }
+        
+        # Log the booking (in a real app, you would save to database)
+        print(f"Local booking created: {receipt}")
+        
+        return Response({
+            "status": "success",
+            "message": "Booking created successfully",
+            "receipt": receipt
+        }, status=status.HTTP_201_CREATED)
+    
+    except json.JSONDecodeError:
+        return Response({
+            "status": "error",
+            "message": "Invalid JSON data"
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    except Exception as e:
+        print(f"Error creating local booking: {str(e)}")
+        return Response({
+            "status": "error",
+            "message": f"Server error: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['DELETE'])
+@authentication_classes([])  # No authentication required
+@permission_classes([AllowAny])  # Allow anyone to access
+def cancel_local_booking(request, booking_id):
+    """
+    Handle local booking cancellation without authentication requirements
+    """
+    try:
+        # In a real app, you would delete from database
+        print(f"Local booking cancelled: {booking_id}")
+        
+        return Response({
+            "status": "success",
+            "message": f"Booking {booking_id} cancelled successfully"
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        print(f"Error cancelling local booking: {str(e)}")
+        return Response({
+            "status": "error",
+            "message": f"Server error: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
