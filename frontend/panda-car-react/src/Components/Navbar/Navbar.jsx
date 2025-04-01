@@ -21,7 +21,7 @@ const Navbar = () => {
         </Link>
         <Link to="/movies">
           <FaFilm className="nav-icon" />
-          <span>Available Movies</span>
+          <span>Popular Movies</span>
         </Link>
         <Link to="/foods">
           <FaUtensils className="nav-icon" />
